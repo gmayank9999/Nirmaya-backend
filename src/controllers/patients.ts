@@ -156,7 +156,11 @@ export const listPatients = async (req: Request, res: Response) => {
   if (search) {
     whereClause = and(
       whereClause,
-      or(ilike(patients.phone, `%${search}%`), ilike(patients.name, `%${search}%`))
+      or(
+        ilike(patients.phone, `%${search}%`),
+        ilike(patients.name, `%${search}%`),
+        ilike(sql`CAST(${patients.id} AS TEXT)`, `%${search}%`)
+      )
     );
   }
   if (gender) {

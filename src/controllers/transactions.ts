@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
-import { and, eq, sql, gte, lte } from "drizzle-orm";
+import { and, eq, sql, gte, lte, desc } from "drizzle-orm";
 import db from "../config/db";
 import { transactions } from "../schema/transactions";
+import { patients } from "../schema/patients";
 import { sendSuccess } from "../utils/response";
 import { parsePagination } from "../utils/pagination";
 import { createAuditLog } from "../services/auditService";
@@ -11,11 +12,18 @@ import { AppError } from "../types";
 export const createTransaction = async (req: Request, res: Response) => {
   const clinicId = req.user!.clinicId;
 
+  // Allow caller to specify the payment date/time (for back-dated entries).
+  // We store it as createdAt so existing queries that sort/filter by createdAt work.
+  const { transactionDate, ...rest } = req.body;
+  const createdAt = transactionDate ? new Date(transactionDate) : new Date();
+
   const [transaction] = await db
     .insert(transactions)
     .values({
       clinicId,
-      ...req.body,
+      ...rest,
+      createdAt,
+      updatedAt: createdAt,
     })
     .returning();
 
@@ -77,19 +85,28 @@ export const listTransactions = async (req: Request, res: Response) => {
   }
 
   const data = await db
-    .select()
+    .select({
+      transaction: transactions,
+      patientName: patients.name,
+    })
     .from(transactions)
+    .leftJoin(patients, eq(transactions.patientId, patients.id))
     .where(whereClause)
     .limit(limit)
     .offset(offset)
-    .orderBy(transactions.createdAt);
+    .orderBy(desc(transactions.createdAt));
+
+  const formattedData = data.map((d) => ({
+    ...d.transaction,
+    patientName: d.patientName,
+  }));
 
   const [{ count }] = await db
     .select({ count: sql<number>`count(*)` })
     .from(transactions)
     .where(whereClause);
 
-  return sendSuccess(res, data, "Transactions fetched", 200, {
+  return sendSuccess(res, formattedData, "Transactions fetched", 200, {
     page,
     limit,
     total: Number(count),
@@ -110,10 +127,18 @@ export const updateTransaction = async (req: Request, res: Response) => {
     throw new AppError(404, "Transaction not found", "Not found");
   }
 
+  // Soft-delete the old record
   await db
     .update(transactions)
     .set({ isDeleted: true, updatedAt: new Date() })
     .where(and(eq(transactions.id, transactionId), eq(transactions.clinicId, clinicId)));
+
+  // Resolve the payment date: accept transactionDate from body, fall back to
+  // existing createdAt so back-dated payments are preserved on edit.
+  const { transactionDate, ...rest } = req.body;
+  const createdAt = transactionDate
+    ? new Date(transactionDate)
+    : existing.createdAt;
 
   const [newTransaction] = await db
     .insert(transactions)
@@ -123,10 +148,12 @@ export const updateTransaction = async (req: Request, res: Response) => {
       patientId: existing.patientId,
       visitId: existing.visitId,
       type: existing.type,
-      amount: req.body.amount ?? existing.amount,
-      paymentMode: req.body.paymentMode ?? existing.paymentMode,
-      referenceId: req.body.referenceId ?? existing.referenceId,
-      notes: req.body.notes ?? existing.notes,
+      amount: rest.amount ?? existing.amount,
+      paymentMode: rest.paymentMode ?? existing.paymentMode,
+      referenceId: rest.referenceId ?? existing.referenceId,
+      notes: rest.notes ?? existing.notes,
+      createdAt,
+      updatedAt: new Date(),
     })
     .returning();
 
@@ -151,12 +178,8 @@ export const updateTransaction = async (req: Request, res: Response) => {
     },
   });
 
-  return sendSuccess(
-    res,
-    { oldTransactionId: transactionId, newTransactionId: newTransaction.id },
-    "Transaction updated",
-    200
-  );
+  // Return the full new transaction so the Flutter app can update its state
+  return sendSuccess(res, newTransaction, "Transaction updated", 200);
 };
 
 export const deleteTransaction = async (req: Request, res: Response) => {
