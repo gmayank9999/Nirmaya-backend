@@ -1,0 +1,14 @@
+.env
+.env.*
+.git
+node_modules
+dist
+test
+docs
+supabase
+*.log
+setup-test-user.ts
+create-receptionists.ts
+cleanup-test.ts
+test-apis.js
+add-patient-number.ts

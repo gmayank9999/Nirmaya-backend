@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { and, eq, ilike, or, sql, inArray } from "drizzle-orm";
+import { and, eq, ilike, or, sql, inArray, gt, desc, getTableColumns } from "drizzle-orm";
 import db from "../config/db";
 import { patients } from "../schema/patients";
 import { treatments } from "../schema/treatments";
@@ -13,6 +13,7 @@ import { createAuditLog } from "../services/auditService";
 import { enqueueSms } from "../services/smsService";
 import { uploadToStorage } from "../services/documentService";
 import { AppError } from "../types";
+import { patientPendingAmount } from "../services/patientBalance";
 
 const getPatientProofFiles = (req: Request) => {
   const files = req.files as Record<string, Express.Multer.File[]> | undefined;
@@ -150,16 +151,20 @@ export const listPatients = async (req: Request, res: Response) => {
   const hasEchs = req.query.hasEchs as string | undefined;
   const createdFrom = req.query.createdFrom as string | undefined;
   const createdTo = req.query.createdTo as string | undefined;
+  const minPending = req.query.minPending as string | undefined;
+  const pendingAmount = patientPendingAmount(clinicId);
 
   let whereClause = and(eq(patients.clinicId, clinicId), eq(patients.isActive, true));
 
   if (search) {
+    // "12", "#12" and "NIR-0012" all look up patient number 12.
+    const numberMatch = search.trim().match(/^(?:nir-?|#)?0*(\d+)$/i);
     whereClause = and(
       whereClause,
       or(
         ilike(patients.phone, `%${search}%`),
         ilike(patients.name, `%${search}%`),
-        ilike(sql`CAST(${patients.id} AS TEXT)`, `%${search}%`)
+        numberMatch ? eq(patients.patientNumber, Number(numberMatch[1])) : undefined
       )
     );
   }
@@ -182,13 +187,21 @@ export const listPatients = async (req: Request, res: Response) => {
     whereClause = and(whereClause, sql`${patients.createdAt} <= ${new Date(createdTo)}`);
   }
 
+  if (minPending !== undefined) {
+    whereClause = and(whereClause, gt(pendingAmount, minPending));
+  }
+
   const data = await db
-    .select()
+    .select({ ...getTableColumns(patients), pendingAmount: pendingAmount.as("pendingAmount") })
     .from(patients)
     .where(whereClause)
     .limit(limit)
     .offset(offset)
-    .orderBy(patients.createdAt);
+    .orderBy(
+      ...(req.query.sortBy === "pending_desc" ? [desc(pendingAmount)] : []),
+      patients.createdAt,
+      patients.id
+    );
 
   const [{ count }] = await db
     .select({ count: sql<number>`count(*)` })

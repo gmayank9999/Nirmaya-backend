@@ -11,4 +11,6 @@ export * from "../schema/auditLogs";
 export * from "../schema/smsNotifications";
 export * from "../schema/smsDeliveryLogs";
 export * from "../schema/bills";
+export * from "../schema/doctors";
+export * from "../schema/appointments";
 export * from "../schema/enums";

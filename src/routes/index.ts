@@ -8,6 +8,8 @@ import transactionRoutes from "../routes/transactions";
 import installmentRoutes from "../routes/installments";
 import documentRoutes from "../routes/documents";
 import followupRoutes from "../routes/followups";
+import doctorRoutes from "../routes/doctors";
+import appointmentRoutes from "../routes/appointments";
 import billRoutes from "../routes/bills";
 import auditRoutes from "../routes/auditLogs";
 import dashboardRoutes from "../routes/dashboard";
@@ -33,6 +35,8 @@ router.use("/transactions", normalizeRouter(transactionRoutes));
 router.use("/installments", normalizeRouter(installmentRoutes));
 router.use("/documents", normalizeRouter(documentRoutes));
 router.use("/followups", normalizeRouter(followupRoutes));
+router.use("/doctors", normalizeRouter(doctorRoutes));
+router.use("/appointments", normalizeRouter(appointmentRoutes));
 router.use("/bills", normalizeRouter(billRoutes));
 router.use("/audit-logs", normalizeRouter(auditRoutes));
 

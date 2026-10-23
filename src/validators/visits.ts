@@ -15,6 +15,10 @@ export const createVisitSchema = z.object({
 export const updateVisitSchema = createVisitSchema.partial();
 
 export const createVisitWithDetailsSchema = createVisitSchema.extend({
+  sendSms: z.preprocess(
+    (value) => value === "true" ? true : value === "false" ? false : value,
+    z.boolean().optional().default(false)
+  ),
   paymentAmount: optionalNumber,
   paymentMode: z.enum(["cash", "upi", "card", "bank"]).optional().nullable(),
   paymentReferenceId: z.string().optional().nullable(),

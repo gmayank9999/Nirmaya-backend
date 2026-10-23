@@ -8,8 +8,8 @@ import {
 } from "../controllers/patients";
 import { asyncHandler } from "../middlewares/errorHandler";
 import { upload } from "../middlewares/upload";
-import { validateBody } from "../middlewares/validate";
-import { createPatientSchema, updatePatientSchema } from "../validators/patients";
+import { validateBody, validateQuery } from "../middlewares/validate";
+import { createPatientSchema, updatePatientSchema, patientPaymentQuerySchema } from "../validators/patients";
 
 const router = Router();
 
@@ -20,7 +20,7 @@ const proofUpload = upload.fields([
 ]);
 
 router.post("/", proofUpload, validateBody(createPatientSchema), asyncHandler(createPatient));
-router.get("/", asyncHandler(listPatients));
+router.get("/", validateQuery(patientPaymentQuerySchema), asyncHandler(listPatients));
 router.get("/:id", asyncHandler(getPatient));
 router.patch("/:id", proofUpload, validateBody(updatePatientSchema), asyncHandler(updatePatient));
 router.delete("/:id", asyncHandler(deletePatient));

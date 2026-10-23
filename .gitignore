@@ -18,3 +18,5 @@ drizzle/meta/*
 *.db
 .next/
 .nuxt/
+.env*
+supabase/.temp/

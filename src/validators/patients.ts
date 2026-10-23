@@ -40,3 +40,12 @@ export const createPatientSchema = z.object({
 });
 
 export const updatePatientSchema = createPatientSchema.partial();
+
+// Keep existing patient query parameters; validate the new payment options.
+// minPending is exclusive: 0 means any outstanding balance.
+export const patientPaymentQuerySchema = z.object({
+  minPending: z.string().trim()
+    .regex(/^\d{1,12}(\.\d{1,2})?$/, "Enter a non-negative amount with up to 2 decimal places")
+    .optional(),
+  sortBy: z.enum(["createdAt", "pending_desc"]).optional(),
+}).passthrough();

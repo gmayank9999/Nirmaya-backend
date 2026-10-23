@@ -14,7 +14,7 @@ export const createTransaction = async (req: Request, res: Response) => {
 
   // Allow caller to specify the payment date/time (for back-dated entries).
   // We store it as createdAt so existing queries that sort/filter by createdAt work.
-  const { transactionDate, ...rest } = req.body;
+  const { transactionDate, sendSms, ...rest } = req.body;
   const createdAt = transactionDate ? new Date(transactionDate) : new Date();
 
   const [transaction] = await db
@@ -36,7 +36,7 @@ export const createTransaction = async (req: Request, res: Response) => {
     changedBy: req.user!.id,
   });
 
-  await enqueueSms({
+  if (sendSms === true) await enqueueSms({
     clinicId,
     patientId: transaction.patientId,
     treatmentId: transaction.treatmentId,
@@ -135,7 +135,7 @@ export const updateTransaction = async (req: Request, res: Response) => {
 
   // Resolve the payment date: accept transactionDate from body, fall back to
   // existing createdAt so back-dated payments are preserved on edit.
-  const { transactionDate, ...rest } = req.body;
+  const { transactionDate, sendSms, ...rest } = req.body;
   const createdAt = transactionDate
     ? new Date(transactionDate)
     : existing.createdAt;
@@ -167,7 +167,7 @@ export const updateTransaction = async (req: Request, res: Response) => {
     changedBy: req.user!.id,
   });
 
-  await enqueueSms({
+  if (sendSms === true) await enqueueSms({
     clinicId,
     patientId: newTransaction.patientId,
     treatmentId: newTransaction.treatmentId,

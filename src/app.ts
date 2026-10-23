@@ -41,10 +41,12 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 // Start server (for local development)
-if (env.NODE_ENV !== "production") {
-  app.listen(env.PORT, () => {
+if (!process.env.VERCEL && env.NODE_ENV !== "production") {
+  app.listen(env.PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${env.PORT}`);
+    console.log(`Network access: http://10.7.13.124:${env.PORT}`);
   });
 }
+
 
 export default app;

@@ -5,6 +5,9 @@ const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const twilioSid = Deno.env.get("TWILIO_ACCOUNT_SID") || "";
 const twilioToken = Deno.env.get("TWILIO_AUTH_TOKEN") || "";
 const twilioPhone = Deno.env.get("TWILIO_PHONE") || "";
+const demoMode = Deno.env.get("TWILIO_DEMO_MODE") === "true";
+const demoTo = Deno.env.get("TWILIO_DEMO_TO") || "";
+const demoTemplate = "sms_appointment_reminders";
 
 const supabase = createClient(supabaseUrl, serviceKey);
 
@@ -70,27 +73,40 @@ const sendTwilioSms = async (to: string, body: string) => {
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: form.toString(),
+    signal: AbortSignal.timeout(15000),
   });
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data?.message || "Twilio SMS failed");
+    throw new Error(`Twilio ${data?.code || res.status}: ${data?.message || "SMS failed"}`);
   }
 
   return data;
 };
 
-Deno.serve(async () => {
+Deno.serve(async (request) => {
   if (!supabaseUrl || !serviceKey || !twilioSid || !twilioToken || !twilioPhone) {
     return new Response("Missing SMS configuration", { status: 500 });
   }
 
-  const { data: notifications, error } = await supabase
+  if (demoMode && !normalizeIndianPhoneForSms(demoTo)) {
+    return new Response("Invalid demo recipient configuration", { status: 500 });
+  }
+  const body = await request.json().catch(() => ({}));
+  // Demo only processes explicit new/test notifications, never a historical batch.
+  if (demoMode && typeof body.notificationId !== "string") {
+    return new Response("Demo mode requires a notificationId", { status: 400 });
+  }
+  let query = supabase
     .from("sms_notifications")
     .select("*")
     .eq("status", "pending")
     .lte("scheduled_at", new Date().toISOString())
     .limit(50);
+  if (typeof body.notificationId === "string") {
+    query = query.eq("id", body.notificationId);
+  }
+  const { data: notifications, error } = await query;
 
   if (error) {
     return new Response(error.message, { status: 500 });
@@ -98,7 +114,7 @@ Deno.serve(async () => {
 
   for (const notification of notifications || []) {
     try {
-      let recipient = notification.payload?.phone;
+      let recipient = demoMode ? demoTo : notification.payload?.phone;
       if (!recipient && notification.patient_id) {
         const { data: patient } = await supabase
           .from("patients")
@@ -114,7 +130,7 @@ Deno.serve(async () => {
         throw new Error("INVALID_RECIPIENT_PHONE");
       }
 
-      const message = buildSmsMessage(notification.event_type, notification.payload);
+      const message = demoMode ? demoTemplate : buildSmsMessage(notification.event_type, notification.payload);
       const twilioRes = await sendTwilioSms(recipient, message);
 
       await supabase.from("sms_delivery_logs").insert({
@@ -124,12 +140,12 @@ Deno.serve(async () => {
         message_preview: message.slice(0, 255),
         status: "sent",
         delivery_status: twilioRes.status,
-        delivered_at: new Date().toISOString(),
+        delivered_at: twilioRes.status === "delivered" ? new Date().toISOString() : null,
       });
 
       await supabase
         .from("sms_notifications")
-        .update({ status: "sent", sent_at: new Date().toISOString() })
+        .update({ status: "sent", sent_at: new Date().toISOString(), error_message: null })
         .eq("id", notification.id);
     } catch (err) {
       const errorMessage = String(err?.message || err);
@@ -139,7 +155,7 @@ Deno.serve(async () => {
       await supabase.from("sms_delivery_logs").insert({
         clinic_id: notification.clinic_id,
         notification_id: notification.id,
-        recipient: notification.payload?.phone || "unknown",
+        recipient: demoMode ? demoTo : notification.payload?.phone || "unknown",
         message_preview: "SMS failed",
         status: "failed",
         error_details:

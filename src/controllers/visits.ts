@@ -175,7 +175,7 @@ export const createVisitWithDetails = async (req: Request, res: Response) => {
       changedBy: req.user!.id,
     });
 
-    await enqueueSms({
+    if (req.body.sendSms === true) await enqueueSms({
       clinicId,
       patientId: transaction.patientId,
       treatmentId: transaction.treatmentId,

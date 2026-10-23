@@ -43,6 +43,13 @@ export const followupStatusEnum = pgEnum("followup_status", [
   "rescheduled",
 ]);
 
+export const appointmentStatusEnum = pgEnum("appointment_status", [
+  "scheduled",
+  "completed",
+  "cancelled",
+  "no_show",
+]);
+
 export const documentCategoryEnum = pgEnum("document_category", [
   "prescription",
   "report",
@@ -61,6 +68,8 @@ export const auditEntityEnum = pgEnum("audit_entity", [
   "document",
   "followup",
   "bill",
+  "doctor",
+  "appointment",
 ]);
 
 export const auditActionEnum = pgEnum("audit_action", [

@@ -13,7 +13,7 @@
     "start": "node dist/src/app.js",
     "dev": "tsx watch src/app.ts",
     "watch": "tsc --watch",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --import tsx --test test/*.test.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate"
@@ -40,6 +40,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",

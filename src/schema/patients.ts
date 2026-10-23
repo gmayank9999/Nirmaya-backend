@@ -3,6 +3,7 @@ import {
   uuid,
   varchar,
   integer,
+  serial,
   numeric,
   boolean,
   timestamp,
@@ -20,6 +21,8 @@ export const patients = pgTable(
     clinicId: uuid("clinic_id")
       .notNull()
       .references(() => clinics.id),
+    // Short human-friendly number shown as NIR-0001; the uuid stays the real key.
+    patientNumber: serial("patient_number").notNull(),
     name: varchar("name", { length: 200 }).notNull(),
     phone: varchar("phone", { length: 20 }).notNull(),
     email: varchar("email", { length: 255 }),
@@ -43,6 +46,9 @@ export const patients = pgTable(
       table.clinicId,
       table.name,
       table.phone
+    ),
+    patientNumberIdx: uniqueIndex("patients_patient_number_idx").on(
+      table.patientNumber
     ),
     clinicCreatedIdx: index("patients_clinic_created_idx").on(
       table.clinicId,

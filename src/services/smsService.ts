@@ -4,9 +4,11 @@ import { smsNotifications } from "../schema/smsNotifications";
 import { smsDeliveryLogs } from "../schema/smsDeliveryLogs";
 import { normalizeIndianPhoneForSms } from "../utils/phone";
 
-const triggerSmsProcessor = async () => {
+const triggerSmsProcessor = async (notificationId: string) => {
   try {
-    const { error } = await supabase.functions.invoke("sms-processor");
+    const { error } = await supabase.functions.invoke("sms-processor", {
+      body: { notificationId },
+    });
     if (error) {
       console.warn("SMS processor trigger failed:", error.message);
     }
@@ -40,7 +42,7 @@ export const enqueueSms = async (params: {
       scheduledAt: params.scheduledAt || new Date(),
     })
     .returning();
-  void triggerSmsProcessor();
+  await triggerSmsProcessor(row.id);
   return row;
 };
 
