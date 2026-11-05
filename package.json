@@ -21,10 +21,12 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.105.1",
     "@types/pdfkit": "^0.17.6",
+    "archiver": "^7.0.1",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.0",
     "drizzle-orm": "^0.44.2",
+    "exceljs": "^4.4.0",
     "express": "^4.22.1",
     "express-rate-limit": "^8.4.1",
     "helmet": "^8.1.0",
@@ -41,6 +43,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
+    "@types/archiver": "^7.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
@@ -54,6 +57,7 @@
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
     "drizzle-kit": "^0.31.8",
+    "jszip": "^3.10.2",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   }

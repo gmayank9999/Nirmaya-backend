@@ -33,6 +33,15 @@ export const requireAuth = (
   }
 };
 
+export const requireRole =
+  (...roles: Array<JwtPayload["role"]>) =>
+  (req: Request, _res: Response, next: NextFunction): void => {
+    if (!req.user || !roles.includes(req.user.role)) {
+      return next(new AppError(403, "Forbidden", "Insufficient permissions"));
+    }
+    return next();
+  };
+
 export const requireClinicScope = (
   req: Request,
   _res: Response,
